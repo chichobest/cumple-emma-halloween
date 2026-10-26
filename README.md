@@ -1,16 +1,39 @@
-# React + Vite
+# 🎃 Cumple de Emma · Concurso de Disfraces
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+SPA para gestionar en directo las votaciones del concurso de disfraces.
 
-Currently, two official plugins are available:
+- **Panel de votos** (`/`): desde el móvil, Emma suma `+1`, `+2`, `+3` de cada papeleta, añade/edita niños y deshace errores.
+- **Marcador TV** (`/#tv`): podio en directo (oro/plata/bronce, con empates), resto de la clasificación, animaciones al recibir votos, aviso de “¡Nuevo líder!” y botón de celebración con confeti y fanfarria.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Desarrollo
 
-## React Compiler
+```bash
+npm install
+npm run dev
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Sincronización en tiempo real
 
-## Expanding the ESLint configuration
+| Modo | Cuándo | Qué sincroniza |
+| --- | --- | --- |
+| **Firestore** | Variables `VITE_FIREBASE_*` definidas | Cualquier dispositivo (móvil ↔ TV) |
+| **Local** | Sin variables | Solo pestañas del mismo navegador (LocalStorage + evento `storage`) |
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Para usar móvil + TV en la fiesta **hace falta Firestore**:
+
+1. Crea un proyecto en [Firebase](https://console.firebase.google.com), añade una app web y activa **Cloud Firestore**.
+2. Copia `.env.example` a `.env.local` y rellena los valores (en Vercel/Netlify, defínelos como variables de entorno del proyecto).
+3. Reglas de Firestore (abiertas solo para esta colección y con fecha de caducidad):
+
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /cumple_emma_participants/{id} {
+      allow read, write: if request.time < timestamp.date(2026, 11, 15);
+    }
+  }
+}
+```
+
+La pastilla de estado indica el modo: **En directo** (Firestore conectado), **Conectando…**, **Modo local** o **Sin conexión**.

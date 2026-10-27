@@ -3,6 +3,10 @@ import { isFirebaseConfigured, loadFirestore } from "./firebase";
 
 export const COLLECTION = "cumple_emma_participants";
 const STORAGE_KEY = "emma_halloween_kids";
+const SETTINGS_KEY = "emma_halloween_settings";
+// Documento reservado dentro de la misma colección (así sirven las reglas de Firestore existentes).
+const SETTINGS_ID = "_settings";
+const DEFAULT_SETTINGS = { ballotTarget: 0 };
 const CHANGE_TTL_MS = 4500;
 
 export const DEMO_PARTICIPANTS = [
@@ -28,6 +32,20 @@ function readLocal() {
     return Array.isArray(parsed) ? parsed.map(normalize) : [];
   } catch {
     return [];
+  }
+}
+
+function normalizeSettings(raw) {
+  return {
+    ballotTarget: Math.max(0, Math.floor(Number(raw?.ballotTarget) || 0)),
+  };
+}
+
+function readLocalSettings() {
+  try {
+    return normalizeSettings(JSON.parse(localStorage.getItem(SETTINGS_KEY)));
+  } catch {
+    return DEFAULT_SETTINGS;
   }
 }
 
@@ -73,6 +91,9 @@ export function useParticipants() {
   );
   const [errorMessage, setErrorMessage] = useState(null);
   const [changes, setChanges] = useState([]);
+  const [settings, setSettings] = useState(() =>
+    isFirebaseConfigured ? DEFAULT_SETTINGS : readLocalSettings(),
+  );
 
   const listRef = useRef(participants);
   const loadedRef = useRef(!isFirebaseConfigured);
@@ -118,6 +139,9 @@ export function useParticipants() {
         if (event.key === STORAGE_KEY || event.key === null) {
           applyList(readLocal());
         }
+        if (event.key === SETTINGS_KEY || event.key === null) {
+          setSettings(readLocalSettings());
+        }
       };
       window.addEventListener("storage", onStorage);
       return () => window.removeEventListener("storage", onStorage);
@@ -135,9 +159,15 @@ export function useParticipants() {
           fs.collection(db, COLLECTION),
           { includeMetadataChanges: true },
           (snapshot) => {
-            const list = snapshot.docs.map((d) =>
-              normalize({ ...d.data(), id: d.id }),
+            const settingsDoc = snapshot.docs.find((d) => d.id === SETTINGS_ID);
+            setSettings(
+              settingsDoc
+                ? normalizeSettings(settingsDoc.data())
+                : DEFAULT_SETTINGS,
             );
+            const list = snapshot.docs
+              .filter((d) => d.id !== SETTINGS_ID)
+              .map((d) => normalize({ ...d.data(), id: d.id }));
             applyList(list, snapshot.metadata.fromCache);
             setStatus(snapshot.metadata.fromCache ? "connecting" : "live");
             setErrorMessage(null);
@@ -255,6 +285,22 @@ export function useParticipants() {
         });
       },
 
+      async setBallotTarget(value) {
+        const next = normalizeSettings({ ballotTarget: value });
+        if (!isFirebaseConfigured) {
+          try {
+            localStorage.setItem(SETTINGS_KEY, JSON.stringify(next));
+          } catch {
+            // Sin almacenamiento: el valor solo vive en esta sesión
+          }
+          setSettings(next);
+          return;
+        }
+        await withFirestore(({ db, fs }) =>
+          fs.setDoc(fs.doc(db, COLLECTION, SETTINGS_ID), next, { merge: true }),
+        );
+      },
+
       async loadDemo() {
         for (const demo of DEMO_PARTICIPANTS) {
           await addParticipant(demo);
@@ -263,5 +309,5 @@ export function useParticipants() {
     };
   }, [applyList]);
 
-  return { participants, status, errorMessage, changes, ...actions };
+  return { participants, settings, status, errorMessage, changes, ...actions };
 }

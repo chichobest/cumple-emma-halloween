@@ -146,3 +146,24 @@ export function useFitToScreen(ref) {
   }, [ref]);
   return scale;
 }
+
+/**
+ * Llama a `onReach` cuando `value` sube hasta alcanzar `target` (> 0).
+ * No dispara con la carga inicial (`ready` false) ni si la meta se fija
+ * por debajo de un valor ya alcanzado.
+ */
+export function useGoalReached(value, target, ready, onReach) {
+  const prevRef = useRef(null);
+  const onReachRef = useRef(onReach);
+  useLayoutEffect(() => {
+    onReachRef.current = onReach;
+  });
+  useEffect(() => {
+    if (!ready) return;
+    const prev = prevRef.current;
+    prevRef.current = value;
+    if (prev !== null && target > 0 && prev < target && value >= target) {
+      onReachRef.current();
+    }
+  }, [value, target, ready]);
+}

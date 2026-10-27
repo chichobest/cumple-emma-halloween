@@ -27,6 +27,11 @@ export function buildPodium(ranked) {
   );
 }
 
+// Cada papeleta reparte +3, +2 y +1: 6 puntos por papeleta completa.
+export const POINTS_PER_BALLOT = 6;
+export const countBallots = (list) =>
+  Math.floor(list.reduce((sum, p) => sum + p.points, 0) / POINTS_PER_BALLOT);
+
 export const MEDALS = { 1: "🥇", 2: "🥈", 3: "🥉" };
 
 const COSTUME_EMOJIS = [

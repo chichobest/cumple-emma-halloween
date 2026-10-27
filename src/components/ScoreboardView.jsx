@@ -11,11 +11,17 @@ import {
 import {
   avatarFor,
   buildPodium,
+  countBallots,
   isOnPodium,
   rankParticipants,
 } from "../lib/ranking";
 import { playFanfare, playVote, unlockAudio } from "../lib/sound";
-import { useFitToScreen, useFlip, useFullscreen } from "../lib/hooks";
+import {
+  useFitToScreen,
+  useFlip,
+  useFullscreen,
+  useGoalReached,
+} from "../lib/hooks";
 import Confetti from "./Confetti";
 import Podium from "./Podium";
 import StatusPill from "./StatusPill";
@@ -107,7 +113,7 @@ export default function ScoreboardView({
   onToggleSound,
   onSwitchView,
 }) {
-  const { participants, status, changes } = store;
+  const { participants, settings, status, changes } = store;
   const [celebration, setCelebration] = useState(null);
   const [isFullscreen, toggleFullscreen, canFullscreen] = useFullscreen();
   const containerRef = useRef(null);
@@ -119,6 +125,8 @@ export default function ScoreboardView({
   const podium = useMemo(() => buildPodium(ranked), [ranked]);
   const rest = ranked.filter((p) => !isOnPodium(p));
   const totalPoints = participants.reduce((sum, p) => sum + p.points, 0);
+  const ballots = countBallots(participants);
+  const { ballotTarget } = settings;
   const winners = podium[0];
 
   // Último cambio por participante, para las burbujas "+N".
@@ -141,16 +149,21 @@ export default function ScoreboardView({
   }, [changes, soundEnabled]);
 
   useEffect(() => {
-    if (!celebration) return;
+    if (!celebration || celebration.final) return;
     const timer = setTimeout(() => setCelebration(null), 7000);
     return () => clearTimeout(timer);
   }, [celebration]);
 
-  const celebrate = () => {
+  const celebrate = (final = false) => {
     unlockAudio();
     if (soundEnabled) playFanfare();
-    setCelebration({ key: Date.now() });
+    setCelebration({ key: Date.now(), final });
   };
+
+  // Recuento completo: la celebración salta sola y se queda hasta tocarla.
+  useGoalReached(ballots, ballotTarget, status !== "connecting", () =>
+    celebrate(true),
+  );
 
   const toggleSound = () => {
     unlockAudio();
@@ -222,7 +235,11 @@ export default function ScoreboardView({
                 )}
               </IconButton>
             )}
-            <IconButton onClick={celebrate} title="¡Celebrar podio!" highlight>
+            <IconButton
+              onClick={() => celebrate()}
+              title="¡Celebrar podio!"
+              highlight
+            >
               <FontAwesomeIcon
                 icon={faChampagneGlasses}
                 className="text-base"
@@ -259,13 +276,11 @@ export default function ScoreboardView({
             </section>
 
             {rest.length > 0 && (
-              <section className="relative z-10 mx-auto mt-5 w-full max-w-6xl">
+              <section className="relative z-10 mx-auto mt-5 w-full max-w-3xl">
                 <h2 className="mb-3 text-center text-xs font-black uppercase tracking-[0.3em] text-slate-500">
                   {totalPoints === 0 ? "Participantes" : "Clasificación"}
                 </h2>
-                <ol
-                  className={`grid gap-3 ${rest.length > 4 ? "md:grid-cols-2 lg:grid-cols-3" : rest.length > 1 ? "md:grid-cols-2" : ""}`}
-                >
+                <ol className="flex flex-col gap-3">
                   {rest.map((kid) => (
                     <RankingRow
                       key={kid.id}
@@ -281,7 +296,14 @@ export default function ScoreboardView({
 
         <footer className="relative z-10 mt-6 text-center text-sm font-semibold text-slate-500">
           {participants.length} participantes · {totalPoints} puntos repartidos
-          {totalPoints > 0 && <> · {Math.floor(totalPoints / 6)} papeletas</>}
+          {ballotTarget > 0 ? (
+            <>
+              {" "}
+              · {ballots} de {ballotTarget} papeletas
+            </>
+          ) : (
+            totalPoints > 0 && <> · {ballots} papeletas</>
+          )}
         </footer>
       </div>
 

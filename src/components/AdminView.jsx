@@ -3,8 +3,11 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faCheck,
   faCopy,
+  faFlagCheckered,
   faMagnifyingGlass,
+  faMinus,
   faPen,
+  faPlus,
   faRotateLeft,
   faSliders,
   faTrashCan,
@@ -14,12 +17,13 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import {
   avatarFor,
+  countBallots,
   isOnPodium,
   MEDALS,
   rankParticipants,
 } from "../lib/ranking";
 import { playUndo, playVote, unlockAudio } from "../lib/sound";
-import { usePersistentState } from "../lib/hooks";
+import { useGoalReached, usePersistentState } from "../lib/hooks";
 import ParticipantModal from "./ParticipantModal";
 
 const HISTORY_KEY = "emma_halloween_history";
@@ -61,6 +65,60 @@ function StatusNotice({ status, errorMessage }) {
     );
   }
   return null;
+}
+
+function BallotTargetInput({ value, onChange }) {
+  // Texto mientras se escribe; fuera de edición se muestra el valor guardado.
+  const [draft, setDraft] = useState(null);
+
+  const commit = (next) => {
+    const clean = Math.max(0, Math.floor(Number(next) || 0));
+    setDraft(null);
+    if (clean !== value) onChange(clean);
+  };
+
+  return (
+    <div>
+      <p className="mb-1 flex items-center gap-1.5 text-xs font-bold uppercase text-slate-400">
+        <FontAwesomeIcon icon={faFlagCheckered} className="text-sm" /> Papeletas
+        a recontar
+      </p>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => commit(value - 1)}
+          disabled={value <= 0}
+          className="flex h-11 w-11 items-center justify-center rounded-lg bg-slate-800 text-slate-200 active:scale-95 disabled:opacity-40"
+          aria-label="Una papeleta menos"
+        >
+          <FontAwesomeIcon icon={faMinus} className="text-base" />
+        </button>
+        <input
+          type="number"
+          inputMode="numeric"
+          min="0"
+          placeholder="—"
+          value={draft ?? String(value || "")}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={() => draft !== null && commit(draft)}
+          onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+          className="h-11 w-20 rounded-lg border border-slate-800 bg-slate-950 text-center font-mono text-xl font-black text-white focus:border-orange-500 focus:outline-none"
+          aria-label="Número de papeletas a recontar"
+        />
+        <button
+          onClick={() => commit(value + 1)}
+          className="flex h-11 w-11 items-center justify-center rounded-lg bg-slate-800 text-slate-200 active:scale-95"
+          aria-label="Una papeleta más"
+        >
+          <FontAwesomeIcon icon={faPlus} className="text-base" />
+        </button>
+      </div>
+      <p className="mt-1 text-xs text-slate-500">
+        {value > 0
+          ? `La celebración saltará sola en la TV al completar la papeleta ${value}.`
+          : "Sin meta: la celebración solo se lanza con el botón de la TV."}
+      </p>
+    </div>
+  );
 }
 
 function KidCard({ kid, onVote, onEdit, onDelete, flash, ballotIds }) {
@@ -146,7 +204,9 @@ function KidCard({ kid, onVote, onEdit, onDelete, flash, ballotIds }) {
 }
 
 export default function AdminView({ store, soundEnabled }) {
-  const { participants, status, errorMessage } = store;
+  const { participants, settings, status, errorMessage } = store;
+  const { ballotTarget } = settings;
+  const ballots = countBallots(participants);
   const [history, setHistory] = usePersistentState(HISTORY_KEY, []);
   const [modal, setModal] = useState(null); // null | { participant?: Participant }
   const [query, setQuery] = useState("");
@@ -176,6 +236,13 @@ export default function AdminView({ store, soundEnabled }) {
   const ballotDeltas = new Set(ballot.current.map((e) => e.delta));
   const ballotIds = new Set(ballot.current.map((e) => e.id));
   const lastAction = history[0];
+
+  useGoalReached(ballots, ballotTarget, status !== "connecting", () =>
+    setToast({
+      tone: "info",
+      text: "¡Recuento completo! 🎉 Celebración en la TV",
+    }),
+  );
 
   useEffect(() => {
     if (!toast) return;
@@ -305,8 +372,16 @@ export default function AdminView({ store, soundEnabled }) {
             Papeleta en curso
           </p>
           <p className="text-sm text-orange-200">
-            {ballot.count} papeleta{ballot.count === 1 ? "" : "s"} completa
-            {ballot.count === 1 ? "" : "s"}
+            {ballotTarget > 0 ? (
+              <>
+                {ballots} de {ballotTarget} papeletas
+              </>
+            ) : (
+              <>
+                {ballot.count} papeleta{ballot.count === 1 ? "" : "s"} completa
+                {ballot.count === 1 ? "" : "s"}
+              </>
+            )}
           </p>
         </div>
         <div className="flex gap-1.5">
@@ -398,6 +473,10 @@ export default function AdminView({ store, soundEnabled }) {
           opciones
         </summary>
         <div className="mt-3 flex flex-col gap-3">
+          <BallotTargetInput
+            value={ballotTarget}
+            onChange={(next) => store.setBallotTarget(next).catch(fail)}
+          />
           <div>
             <p className="mb-1 flex items-center gap-1.5 text-xs font-bold uppercase text-slate-400">
               <FontAwesomeIcon icon={faTv} className="text-sm" /> Enlace para la

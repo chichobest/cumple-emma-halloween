@@ -27,6 +27,10 @@ export function buildPodium(ranked) {
   );
 }
 
+// Niños que caben por puesto en el podio; si empatan más, siguen en la lista.
+const MAX_PER_PLACE = 3;
+export const visibleOnPlace = (kids) => kids.slice(0, MAX_PER_PLACE);
+
 // Cada papeleta reparte +3, +2 y +1: 6 puntos por papeleta completa.
 export const POINTS_PER_BALLOT = 6;
 export const countBallots = (list) =>

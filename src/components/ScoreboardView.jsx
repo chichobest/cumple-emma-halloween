@@ -12,16 +12,11 @@ import {
   avatarFor,
   buildPodium,
   countBallots,
-  isOnPodium,
   rankParticipants,
+  visibleOnPlace,
 } from "../lib/ranking";
 import { playFanfare, playVote, unlockAudio } from "../lib/sound";
-import {
-  useFitToScreen,
-  useFlip,
-  useFullscreen,
-  useGoalReached,
-} from "../lib/hooks";
+import { useFlip, useFullscreen, useGoalReached } from "../lib/hooks";
 import Confetti from "./Confetti";
 import Podium from "./Podium";
 import StatusPill from "./StatusPill";
@@ -117,13 +112,14 @@ export default function ScoreboardView({
   const [celebration, setCelebration] = useState(null);
   const [isFullscreen, toggleFullscreen, canFullscreen] = useFullscreen();
   const containerRef = useRef(null);
-  const contentRef = useRef(null);
   const playedRef = useRef(new Set());
-  const scale = useFitToScreen(contentRef);
 
   const ranked = useMemo(() => rankParticipants(participants), [participants]);
   const podium = useMemo(() => buildPodium(ranked), [ranked]);
-  const rest = ranked.filter((p) => !isOnPodium(p));
+  const shownOnPodium = new Set(
+    podium.flatMap(visibleOnPlace).map((p) => p.id),
+  );
+  const rest = ranked.filter((p) => !shownOnPodium.has(p.id));
   const totalPoints = participants.reduce((sum, p) => sum + p.points, 0);
   const ballots = countBallots(participants);
   const { ballotTarget } = settings;
@@ -173,28 +169,24 @@ export default function ScoreboardView({
   return (
     <div
       ref={containerRef}
-      className="relative min-h-screen overflow-hidden bg-[radial-gradient(ellipse_at_top,_#3b0764_0%,_#0f0a1e_45%,_#020617_100%)] md:h-screen"
+      className="relative min-h-screen overflow-hidden bg-[radial-gradient(ellipse_at_top,_#3b0764_0%,_#0f0a1e_45%,_#020617_100%)] bg-fixed"
     >
-      {DECOR.map((d, i) => (
-        <span
-          key={i}
-          aria-hidden="true"
-          className={`pointer-events-none absolute animate-float opacity-20 ${d.className}`}
-        >
-          {d.emoji}
-        </span>
-      ))}
-
-      {/* En TV todo el contenido se escala para caber en pantalla sin scroll. */}
+      {/* El podio ocupa la primera pantalla (dejando asomar la lista); el resto sigue con scroll. */}
       <div
-        ref={contentRef}
-        className="flex min-h-screen flex-col px-4 pb-6 pt-4 sm:px-8"
-        style={
-          scale < 1
-            ? { transform: `scale(${scale})`, transformOrigin: "top center" }
-            : undefined
-        }
+        className={`relative flex flex-col px-4 pb-4 pt-4 sm:px-8 ${
+          rest.length > 0 ? "min-h-[calc(100vh-5rem)]" : "min-h-screen"
+        }`}
       >
+        {DECOR.map((d, i) => (
+          <span
+            key={i}
+            aria-hidden="true"
+            className={`pointer-events-none absolute animate-float opacity-20 ${d.className}`}
+          >
+            {d.emoji}
+          </span>
+        ))}
+
         {/* Controles */}
         <div className="relative z-20 flex flex-wrap items-center justify-between gap-2">
           <StatusPill status={status} />
@@ -270,31 +262,12 @@ export default function ScoreboardView({
             </p>
           </div>
         ) : (
-          <>
-            <section className="relative z-10 mt-[clamp(2rem,6vh,4.5rem)] flex flex-1 flex-col justify-end">
-              <Podium podium={podium} changesById={changesById} />
-            </section>
-
-            {rest.length > 0 && (
-              <section className="relative z-10 mx-auto mt-5 w-full max-w-3xl">
-                <h2 className="mb-3 text-center text-xs font-black uppercase tracking-[0.3em] text-slate-500">
-                  {totalPoints === 0 ? "Participantes" : "Clasificación"}
-                </h2>
-                <ol className="flex flex-col gap-3">
-                  {rest.map((kid) => (
-                    <RankingRow
-                      key={kid.id}
-                      kid={kid}
-                      change={changesById.get(kid.id)}
-                    />
-                  ))}
-                </ol>
-              </section>
-            )}
-          </>
+          <section className="relative z-10 mt-[clamp(2rem,6.5vh,5rem)] flex flex-1 flex-col justify-end">
+            <Podium podium={podium} changesById={changesById} />
+          </section>
         )}
 
-        <footer className="relative z-10 mt-6 text-center text-sm font-semibold text-slate-500">
+        <footer className="relative z-10 mt-4 text-center text-sm font-semibold text-slate-500">
           {participants.length} participantes · {totalPoints} puntos repartidos
           {ballotTarget > 0 ? (
             <>
@@ -306,6 +279,23 @@ export default function ScoreboardView({
           )}
         </footer>
       </div>
+
+      {rest.length > 0 && (
+        <section className="relative z-10 mx-auto w-full max-w-3xl px-4 pb-8 sm:px-8">
+          <h2 className="mb-3 text-center text-xs font-black uppercase tracking-[0.3em] text-slate-500">
+            {totalPoints === 0 ? "Participantes" : "Clasificación"}
+          </h2>
+          <ol className="flex flex-col gap-3">
+            {rest.map((kid) => (
+              <RankingRow
+                key={kid.id}
+                kid={kid}
+                change={changesById.get(kid.id)}
+              />
+            ))}
+          </ol>
+        </section>
+      )}
 
       {/* Nuevo líder (automático) */}
       {leaderChange && !celebration && (

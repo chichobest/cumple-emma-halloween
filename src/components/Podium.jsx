@@ -1,23 +1,23 @@
-import { avatarFor, MEDALS } from "../lib/ranking";
+import { avatarFor, MEDALS, visibleOnPlace } from "../lib/ranking";
 
 const PLACES = {
   1: {
     order: "order-2",
-    height: "h-[clamp(5rem,17vh,13rem)]",
+    height: "h-[clamp(5rem,21vh,20rem)]",
     block: "from-amber-300 via-amber-500 to-orange-700 shadow-amber-500/40",
     glow: "bg-amber-400/30",
     label: "1º",
   },
   2: {
     order: "order-1",
-    height: "h-[clamp(3.75rem,11.5vh,9rem)]",
+    height: "h-[clamp(3.75rem,15.5vh,15rem)]",
     block: "from-slate-100 via-slate-300 to-slate-500 shadow-slate-300/30",
     glow: "bg-slate-300/20",
     label: "2º",
   },
   3: {
     order: "order-3",
-    height: "h-[clamp(2.75rem,7.5vh,6rem)]",
+    height: "h-[clamp(2.75rem,12.5vh,12rem)]",
     block: "from-orange-300 via-orange-600 to-amber-900 shadow-orange-700/30",
     glow: "bg-orange-600/20",
     label: "3º",
@@ -48,10 +48,10 @@ function PodiumKid({ kid, place, compact, change }) {
           place === 1
             ? "border-amber-300 shadow-[0_0_40px_rgba(251,191,36,0.45)]"
             : "border-slate-600"
-        } ${compact ? "h-[clamp(2.75rem,6vh,4.5rem)] w-[clamp(2.75rem,6vh,4.5rem)] text-[clamp(1.5rem,3.5vh,2.5rem)]" : place === 1 ? "h-[clamp(3.5rem,9vh,6.5rem)] w-[clamp(3.5rem,9vh,6.5rem)] text-[clamp(2rem,5.5vh,3.75rem)]" : "h-[clamp(3rem,7vh,5rem)] w-[clamp(3rem,7vh,5rem)] text-[clamp(1.6rem,4vh,2.75rem)]"}`}
+        } ${compact ? "h-[clamp(2.75rem,7.5vh,5.5rem)] w-[clamp(2.75rem,7.5vh,5.5rem)] text-[clamp(1.5rem,4.5vh,3.25rem)]" : place === 1 ? "h-[clamp(3.5rem,12vh,10rem)] w-[clamp(3.5rem,12vh,10rem)] text-[clamp(2rem,7.5vh,6rem)]" : "h-[clamp(3rem,9.5vh,7.5rem)] w-[clamp(3rem,9.5vh,7.5rem)] text-[clamp(1.6rem,6vh,4.25rem)]"}`}
       >
         {place === 1 && !compact && (
-          <span className="absolute -top-[45%] text-[clamp(1.75rem,5vh,3.25rem)] animate-float">
+          <span className="absolute -top-[45%] text-[clamp(1.75rem,6.5vh,4.5rem)] animate-float">
             👑
           </span>
         )}
@@ -60,28 +60,28 @@ function PodiumKid({ kid, place, compact, change }) {
       <p
         className={`max-w-full truncate font-black leading-tight text-white ${
           compact
-            ? "text-[clamp(1.1rem,min(2.2vw,4vh),2rem)]"
+            ? "text-[clamp(1.1rem,min(2.2vw,4vh),2.25rem)]"
             : place === 1
-              ? "text-[clamp(1.5rem,min(3.6vw,6vh),3.25rem)]"
-              : "text-[clamp(1.2rem,min(2.6vw,4.5vh),2.25rem)]"
+              ? "text-[clamp(1.5rem,min(4.5vw,7.5vh),5rem)]"
+              : "text-[clamp(1.2rem,min(3.2vw,5.5vh),3.25rem)]"
         }`}
       >
         {kid.name}
       </p>
       <p
-        className={`max-w-full truncate font-semibold text-purple-300 ${compact ? "text-xs" : "text-[clamp(0.8rem,1.3vw,1.15rem)]"}`}
+        className={`max-w-full truncate font-semibold text-purple-300 ${compact ? "text-xs" : "text-[clamp(0.8rem,1.5vw,1.6rem)]"}`}
       >
         {kid.costume}
       </p>
-      <p className="mt-1 flex items-baseline gap-1">
+      <p className="mt-1 flex items-baseline gap-1 leading-none">
         <span
           key={kid.points}
           className={`inline-block animate-pop font-mono font-black text-orange-400 ${
             compact
-              ? "text-[clamp(1.4rem,min(2.6vw,5vh),2.5rem)]"
+              ? "text-[clamp(1.4rem,min(2.6vw,5vh),2.75rem)]"
               : place === 1
-                ? "text-[clamp(2rem,min(4.5vw,8vh),4rem)]"
-                : "text-[clamp(1.5rem,min(3vw,5.5vh),2.75rem)]"
+                ? "text-[clamp(2rem,min(6vw,10vh),6rem)]"
+                : "text-[clamp(1.5rem,min(4vw,7vh),4rem)]"
           }`}
         >
           {kid.points}
@@ -95,7 +95,7 @@ function PodiumKid({ kid, place, compact, change }) {
 function PodiumColumn({ place, kids, changesById }) {
   const style = PLACES[place];
   const compact = kids.length > 1;
-  const visible = kids.slice(0, 3);
+  const visible = visibleOnPlace(kids);
   const hidden = kids.length - visible.length;
 
   return (
@@ -150,10 +150,10 @@ function PodiumColumn({ place, kids, changesById }) {
         <div
           className={`relative flex h-full w-full flex-col items-center justify-start rounded-t-2xl bg-gradient-to-b pt-3 shadow-2xl ${style.block}`}
         >
-          <span className="text-[clamp(1.5rem,4.5vh,3rem)] leading-none drop-shadow">
+          <span className="text-[clamp(1.5rem,5vh,4rem)] leading-none drop-shadow">
             {MEDALS[place]}
           </span>
-          <span className="font-display text-[clamp(1.25rem,3.5vh,2.5rem)] leading-none text-slate-950/70">
+          <span className="font-display text-[clamp(1.25rem,4vh,3.25rem)] leading-none text-slate-950/70">
             {style.label}
           </span>
         </div>
@@ -164,7 +164,7 @@ function PodiumColumn({ place, kids, changesById }) {
 
 export default function Podium({ podium, changesById }) {
   return (
-    <div className="mx-auto flex w-full max-w-5xl items-end gap-2 sm:gap-4">
+    <div className="mx-auto flex w-full max-w-7xl items-end gap-2 sm:gap-4">
       {[1, 2, 3].map((place) => (
         <PodiumColumn
           key={place}

@@ -121,33 +121,6 @@ export function useFlip(containerRef) {
 }
 
 /**
- * Escala (<= 1) para que el elemento quepa en la altura de la ventana.
- * Solo en pantallas anchas (TV/tablet); en móvil se hace scroll normal.
- */
-export function useFitToScreen(ref) {
-  const [scale, setScale] = useState(1);
-  useEffect(() => {
-    const element = ref.current;
-    if (!element) return;
-    const wide = window.matchMedia("(min-width: 768px)");
-    const update = () => {
-      const next = wide.matches
-        ? Math.min(1, window.innerHeight / element.offsetHeight)
-        : 1;
-      setScale((prev) => (Math.abs(prev - next) > 0.005 ? next : prev));
-    };
-    const observer = new ResizeObserver(update);
-    observer.observe(element);
-    window.addEventListener("resize", update);
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", update);
-    };
-  }, [ref]);
-  return scale;
-}
-
-/**
  * Llama a `onReach` cuando `value` sube hasta alcanzar `target` (> 0).
  * No dispara con la carga inicial (`ready` false) ni si la meta se fija
  * por debajo de un valor ya alcanzado.
